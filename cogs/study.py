@@ -1,12 +1,13 @@
 import json
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import boto3
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
+import discord.utils
 
 
 class Study(commands.Cog):
@@ -15,6 +16,8 @@ class Study(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.active_questions = {}  # 활성 질문 추적
+        self.start_date = datetime(2025, 7, 20)  # 시작 날짜 (오늘)
+        self.allowed_channel_id = int(os.getenv("ALLOWED_CHANNEL_ID", "0")) if os.getenv("ALLOWED_CHANNEL_ID") else None
 
         # AWS Bedrock 클라이언트 초기화
         self.bedrock_runtime = boto3.client(
@@ -26,6 +29,9 @@ class Study(commands.Cog):
 
         # JSON 파일에서 질문 데이터베이스 로드
         self.question_bank = self.load_questions()
+        
+        # 스케줄러 시작
+        self.daily_question.start()
 
     def load_questions(self):
         """JSON 파일에서 질문 데이터 로드"""
@@ -94,6 +100,32 @@ class Study(commands.Cog):
             "sub_category": sub_category,
             "question": random.choice(questions),
         }
+    
+    def get_question_by_index(self, index, category_type):
+        """인덱스 기반으로 질문 선택 (스케줄러용)"""
+        if category_type not in ["backend", "frontend", "general"]:
+            return None
+            
+        main_category = self.question_bank.get(category_type, {})
+        if not main_category:
+            return None
+            
+        # 모든 질문을 하나의 리스트로 평탄화
+        all_questions = []
+        for sub_category, questions in main_category.items():
+            for question in questions:
+                all_questions.append({
+                    "category": category_type,
+                    "sub_category": sub_category,
+                    "question": question
+                })
+        
+        if not all_questions:
+            return None
+            
+        # 인덱스가 전체 길이를 초과하면 다시 처음부터
+        actual_index = index % len(all_questions)
+        return all_questions[actual_index]
 
     async def generate_feedback(self, question, answer):
         """Bedrock을 사용해 답변에 대한 피드백 생성"""
@@ -299,6 +331,171 @@ class Study(commands.Cog):
         )
 
         await ctx.send(embed=embed)
+    
+    @commands.command(name="scheduler_status", aliases=["스케줄러"])
+    async def scheduler_status(self, ctx):
+        """스케줄러 상태 확인"""
+        days_passed = (datetime.now().date() - self.start_date.date()).days
+        
+        embed = discord.Embed(
+            title="⏰ 스케줄러 상태",
+            description=f"매일 오전 10시에 자동으로 질문이 게시됩니다.",
+            color=discord.Color.blue(),
+        )
+        
+        embed.add_field(
+            name="📅 현재 상태",
+            value=f"- 시작일: {self.start_date.date()}\n"
+                  f"- 경과일: Day {days_passed + 1}\n"
+                  f"- 오늘의 인덱스: {days_passed}\n"
+                  f"- 오늘 게시될 카테고리: Backend, Frontend, General (3개 모두)",
+            inline=False,
+        )
+        
+        embed.add_field(
+            name="🔄 스케줄러 상태",
+            value=f"실행 중: {'✅' if self.daily_question.is_running() else '❌'}",
+            inline=False,
+        )
+        
+        embed.add_field(
+            name="📊 질문 게시 정보",
+            value=f"- 매일 3개의 질문 게시 (Backend, Frontend, General)\n"
+                  f"- 각 카테고리는 순차적으로 진행\n"
+                  f"- 모든 질문을 다 돌면 처음부터 다시 시작",
+            inline=False,
+        )
+        
+        await ctx.send(embed=embed)
+    
+    @commands.command(name="post_daily", aliases=["일일질문"])
+    @commands.has_permissions(administrator=True)
+    async def post_daily_question(self, ctx):
+        """수동으로 일일 질문 게시 (관리자 전용)"""
+        await self.daily_question()
+        await ctx.send("✅ 일일 질문이 게시되었습니다!")
+    
+    @tasks.loop(hours=24)
+    async def daily_question(self):
+        """매일 오전 10시에 질문 자동 게시"""
+        if not self.allowed_channel_id:
+            print("❌ ALLOWED_CHANNEL_ID가 설정되지 않아 스케줄러를 실행할 수 없습니다.")
+            return
+            
+        channel = self.bot.get_channel(self.allowed_channel_id)
+        if not channel:
+            print(f"❌ 채널 {self.allowed_channel_id}를 찾을 수 없습니다.")
+            return
+        
+        # 시작일로부터 경과한 일수 계산
+        days_passed = (datetime.now().date() - self.start_date.date()).days
+        
+        # 세 가지 카테고리 모두 처리
+        categories = ["backend", "frontend", "general"]
+        
+        for category_type in categories:
+            # 각 카테고리별로 인덱스 계산
+            category_index = days_passed
+            
+            # 인덱스 기반으로 질문 가져오기
+            q_data = self.get_question_by_index(category_index, category_type)
+            
+            if not q_data:
+                print(f"❌ {category_type} 카테고리에서 질문을 가져올 수 없습니다.")
+                continue
+            
+            # 카테고리별 색상 설정
+            color_map = {
+                "backend": discord.Color.orange(),
+                "frontend": discord.Color.blue(),
+                "general": discord.Color.green(),
+            }
+            
+            # 카테고리별 이모지
+            emoji_map = {
+                "backend": "🔧",
+                "frontend": "🎨",
+                "general": "💡",
+            }
+            
+            # 임베드 생성
+            embed = discord.Embed(
+                title=f"{emoji_map.get(category_type, '🌅')} 오늘의 {q_data['category'].upper()} 질문 (Day {days_passed + 1})",
+                description=f"**Q. {q_data['question']}**",
+                color=color_map.get(q_data["category"], discord.Color.purple()),
+            )
+            
+            embed.add_field(
+                name="📝 답변 방법",
+                value="아래에 자동으로 생성되는 **스레드**에서 답변해주세요!",
+                inline=False,
+            )
+            
+            embed.set_footer(
+                text=f"카테고리: {q_data['sub_category']} | 인덱스: {category_index} | 답변 후 자동으로 피드백을 받을 수 있습니다"
+            )
+            
+            # 질문 메시지 전송
+            question_msg = await channel.send(embed=embed)
+            
+            # 자동으로 스레드 생성
+            try:
+                thread = await question_msg.create_thread(
+                    name=f"💬 Day {days_passed + 1} - {q_data['category']} 질문",
+                    auto_archive_duration=1440,  # 24시간 후 자동 보관
+                )
+                
+                # 스레드에 안내 메시지
+                await thread.send(
+                    f"**📅 Day {days_passed + 1} 질문입니다!**\n"
+                    f"질문: {q_data['question']}\n\n"
+                    f"답변을 작성하시면 AI가 피드백을 제공합니다. 💡"
+                )
+                
+                # 활성 질문으로 저장
+                self.active_questions[question_msg.id] = {
+                    "question": q_data["question"],
+                    "category": q_data["category"],
+                    "sub_category": q_data["sub_category"],
+                    "asked_at": datetime.now(),
+                    "author_id": self.bot.user.id,  # 봇이 질문한 것으로 표시
+                    "thread_id": thread.id,
+                    "answered": False,
+                    "scheduled": True,  # 스케줄러로 생성된 질문 표시
+                }
+                
+                print(f"✅ Day {days_passed + 1} {category_type} 질문이 게시되었습니다.")
+                
+            except discord.errors.Forbidden:
+                print("❌ 스레드 생성 권한이 없습니다.")
+            except Exception as e:
+                print(f"❌ 스케줄러 오류: {e}")
+            
+            # 질문 간 약간의 딜레이 (스팸 방지)
+            await discord.utils.sleep_until(datetime.now() + timedelta(seconds=2))
+    
+    @daily_question.before_loop
+    async def before_daily_question(self):
+        """스케줄러 시작 전 봇이 준비될 때까지 대기"""
+        await self.bot.wait_until_ready()
+        
+        # 다음 10시까지 대기
+        now = datetime.now()
+        next_run = now.replace(hour=10, minute=0, second=0, microsecond=0)
+        
+        # 만약 현재 시간이 10시를 지났다면 다음날 10시로 설정
+        if now.hour >= 10:
+            next_run += timedelta(days=1)
+            
+        wait_seconds = (next_run - now).total_seconds()
+        print(f"⏰ 스케줄러가 {next_run}에 시작됩니다. ({wait_seconds:.0f}초 대기)")
+        
+        # 대기
+        await discord.utils.sleep_until(next_run)
+    
+    def cog_unload(self):
+        """Cog이 언로드될 때 스케줄러 중지"""
+        self.daily_question.cancel()
 
 
 async def setup(bot):

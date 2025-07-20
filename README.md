@@ -84,9 +84,20 @@ python main.py
   - frontend: React, 성능, 상태관리, CSS, TypeScript, 테스팅, 접근성
   - general: 프로그래밍 일반, 소프트스킬, 커리어
 - `!mystats` / `!내점수` / `!stats` - 학습 통계 보기
+- `!scheduler_status` / `!스케줄러` - 스케줄러 상태 확인
+- `!post_daily` / `!일일질문` - 수동으로 일일 질문 게시 (관리자 전용)
 - 답변 방법: 자동으로 생성되는 스레드에서 답변
 - 스레드에서 답변하면 AI가 자동으로 피드백을 제공합니다!
 - 총 900개의 다양한 질문이 준비되어 있습니다 (각 분야별 300개)
+
+#### 🕐 자동 질문 스케줄러
+- **매일 오전 10시**에 자동으로 질문이 게시됩니다
+- **매일 3개의 질문** 게시: Backend, Frontend, General 각 1개씩
+- 날짜 기반 인덱스로 순차적으로 질문이 선택됩니다
+- Day 1 (2025-07-20): Backend/Frontend/General 모두 인덱스 0
+- Day 2 (2025-07-21): Backend/Frontend/General 모두 인덱스 1
+- Day 3 (2025-07-22): Backend/Frontend/General 모두 인덱스 2
+- 모든 질문을 다 돌면 처음부터 다시 시작합니다
 
 ## 폴더 구조
 
