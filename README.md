@@ -2,7 +2,7 @@
 
 Python과 discord.py를 사용한 오픈소스 Discord 봇입니다.
 
-[![Run on Replit](https://replit.com/badge/github/YOUR_USERNAME/YOUR_REPO_NAME)](https://replit.com/new/github/YOUR_USERNAME/YOUR_REPO_NAME)
+[![Run on Replit](https://replit.com/badge/github/GaeChwiPpo/GaeChwiPpo-bot)](https://replit.com/@academey1/GaeChwiPpo-bot-1)
 
 ## 🚀 빠른 시작 (1분 배포!)
 
