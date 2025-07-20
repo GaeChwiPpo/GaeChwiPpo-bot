@@ -144,7 +144,7 @@ class Study(commands.Cog):
         else:
             return "⚠️ 괜찮은 시도예요! 실무 예시를 추가하면 더 좋을 것 같아요."
 
-    @commands.command(name="question", aliases=["질문", "q"])
+    @commands.command(name="question", aliases=["문제", "q"])
     async def ask_question(self, ctx, category: str = None):
         """학습 질문 던지기"""
         # 카테고리 검증
@@ -168,7 +168,7 @@ class Study(commands.Cog):
 
         embed.add_field(
             name="📝 답변 방법",
-            value="이 메시지에 답글로 답변해주세요!",
+            value="이 메시지에 **스레드**를 열어서 답변하거나, 답글로 답변해주세요!",
             inline=False,
         )
 
@@ -179,14 +179,41 @@ class Study(commands.Cog):
         # 질문 메시지 전송
         question_msg = await ctx.send(embed=embed)
 
-        # 활성 질문으로 저장
-        self.active_questions[question_msg.id] = {
-            "question": q_data["question"],
-            "category": q_data["category"],
-            "sub_category": q_data["sub_category"],
-            "asked_at": datetime.now(),
-            "author_id": ctx.author.id,
-        }
+        # 자동으로 스레드 생성
+        try:
+            thread = await question_msg.create_thread(
+                name=f"💬 {q_data['category']} 질문 토론",
+                auto_archive_duration=1440,  # 24시간 후 자동 보관
+            )
+
+            # 스레드에 안내 메시지
+            await thread.send(
+                f"**이 스레드에서 답변해주세요!**\n"
+                f"질문: {q_data['question']}\n\n"
+                f"답변을 작성하시면 AI가 피드백을 제공합니다. 💡"
+            )
+
+            # 활성 질문으로 저장 (스레드 ID 포함)
+            self.active_questions[question_msg.id] = {
+                "question": q_data["question"],
+                "category": q_data["category"],
+                "sub_category": q_data["sub_category"],
+                "asked_at": datetime.now(),
+                "author_id": ctx.author.id,
+                "thread_id": thread.id,
+                "answered": False,
+            }
+        except discord.errors.Forbidden:
+            # 스레드 생성 권한이 없는 경우
+            # 활성 질문으로 저장 (스레드 없이)
+            self.active_questions[question_msg.id] = {
+                "question": q_data["question"],
+                "category": q_data["category"],
+                "sub_category": q_data["sub_category"],
+                "asked_at": datetime.now(),
+                "author_id": ctx.author.id,
+                "answered": False,
+            }
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -194,6 +221,17 @@ class Study(commands.Cog):
         # 봇 메시지 무시
         if message.author.bot:
             return
+
+        # 스레드에서의 메시지인 경우
+        if isinstance(message.channel, discord.Thread):
+            # 스레드 ID로 활성 질문 찾기
+            thread_id = message.channel.id
+            for q_id, q_info in self.active_questions.items():
+                if q_info.get("thread_id") == thread_id:
+                    # 스레드에서의 첫 답변만 처리
+                    if not q_info.get("answered", False):
+                        await self.process_answer(message, q_id, q_info)
+                    return
 
         # 답글인지 확인
         if not message.reference:
@@ -204,8 +242,17 @@ class Study(commands.Cog):
         if ref_id not in self.active_questions:
             return
 
-        # 질문 정보 가져오기
-        q_info = self.active_questions[ref_id]
+        # 일반 답글 처리
+        await self.process_answer(message, ref_id, self.active_questions[ref_id])
+
+    async def process_answer(self, message, question_id, q_info):
+        """답변 처리 및 피드백 생성"""
+        # 이미 답변된 질문인지 확인
+        if q_info.get("answered", False):
+            return
+
+        # 답변 처리 중으로 표시
+        self.active_questions[question_id]["answered"] = True
 
         # 피드백 생성 중 메시지
         thinking_msg = await message.reply("🤔 답변을 분석하고 있습니다...")
@@ -231,7 +278,7 @@ class Study(commands.Cog):
             await thinking_msg.edit(content=None, embed=embed)
 
             # 답변 완료된 질문 제거
-            del self.active_questions[ref_id]
+            del self.active_questions[question_id]
 
         except Exception as e:
             await thinking_msg.edit(
@@ -258,4 +305,3 @@ class Study(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Study(bot))
-
