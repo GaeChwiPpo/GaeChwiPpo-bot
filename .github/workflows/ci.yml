@@ -56,11 +56,23 @@ jobs:
         pip install pytest pytest-asyncio pytest-cov
         pip install -r requirements.txt
     
+    - name: Check if tests exist
+      id: check_tests
+      run: |
+        if [ -d "tests" ] && [ "$(ls -A tests/*.py 2>/dev/null)" ]; then
+          echo "tests_exist=true" >> $GITHUB_OUTPUT
+        else
+          echo "tests_exist=false" >> $GITHUB_OUTPUT
+          echo "No tests found, skipping test step"
+        fi
+    
     - name: Run tests
+      if: steps.check_tests.outputs.tests_exist == 'true'
       run: |
         pytest tests/ --cov=./ --cov-report=xml
     
     - name: Upload coverage to Codecov
+      if: steps.check_tests.outputs.tests_exist == 'true'
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
