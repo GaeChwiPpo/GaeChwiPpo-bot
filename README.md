@@ -30,6 +30,11 @@ pip install -r requirements.txt
    - `DISCORD_BOT_TOKEN`에 실제 봇 토큰을 입력
    - `ALLOWED_CHANNEL_ID`에 특정 채널 ID 입력 (선택사항, 비워두면 모든 채널에서 작동)
 
+3. AWS Bedrock 설정 (Study 기능용, 선택사항):
+   - `AWS_ACCESS_KEY_ID`와 `AWS_SECRET_ACCESS_KEY` 입력
+   - `AWS_REGION` 설정 (기본값: us-east-1)
+   - AWS Bedrock Claude 모델 액세스 권한 필요
+
 ## 봇 생성 및 초대
 
 1. [Discord Developer Portal](https://discord.com/developers/applications)로 이동
@@ -73,6 +78,11 @@ python main.py
 - `!coin` / `!동전` - 동전 던지기
 - `!rps [가위/바위/보]` / `!가위바위보` - 가위바위보 게임
 
+### Study Cog 명령어 (학습 시스템)
+- `!question [backend/frontend]` / `!질문` / `!q` - 개발 질문 받기
+- `!mystats` / `!내점수` / `!stats` - 학습 통계 보기
+- 질문에 답글로 답변하면 자동으로 AI 피드백을 받습니다!
+
 ## 폴더 구조
 
 ```
@@ -80,7 +90,9 @@ discode-automation/
 ├── main.py          # 메인 봇 파일
 ├── cogs/           # 명령어 모듈
 │   ├── general.py  # 일반 명령어
-│   └── fun.py      # 재미있는 명령어
+│   ├── fun.py      # 재미있는 명령어
+│   └── study.py    # 학습 질문 시스템
+├── keep_alive.py   # Replit 웹 서버
 ├── .env            # 환경 변수 (생성 필요)
 ├── .env.example    # 환경 변수 예시
 └── requirements.txt # 필요한 패키지
