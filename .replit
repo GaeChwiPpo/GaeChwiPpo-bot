@@ -1,0 +1,13 @@
+run = "python main.py"
+language = "python3"
+
+[packager]
+language = "python3"
+
+[packager.features]
+packageSearch = true
+guessImports = true
+
+[[hints]]
+regex = "discord"
+message = "Discord bot is starting..."
