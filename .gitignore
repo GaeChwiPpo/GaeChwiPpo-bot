@@ -48,4 +48,5 @@ logs/
 
 # Bot specific
 config.json
-data/
+data/*
+!data/questions.json
