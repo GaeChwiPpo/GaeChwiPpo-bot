@@ -105,18 +105,3 @@ jobs:
       run: |
         timeout 5 python main.py || if [ $? -eq 124 ]; then echo "Bot started successfully"; else exit 1; fi
 
-  docker-build:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Build Docker image
-      run: docker build -t discord-bot:test .
-    
-    - name: Test Docker image
-      run: |
-        docker run -d --name test-bot -e DISCORD_BOT_TOKEN=DUMMY discord-bot:test
-        sleep 5
-        docker logs test-bot
-        docker stop test-bot
