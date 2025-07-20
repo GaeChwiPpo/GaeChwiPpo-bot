@@ -110,10 +110,7 @@ jobs:
         python -m py_compile main.py
         python -m py_compile cogs/*.py
     
-    - name: Dry run bot (5 seconds)
-      env:
-        DISCORD_BOT_TOKEN: "DUMMY_TOKEN_FOR_TESTING"
-        COMMAND_PREFIX: "!"
+    - name: Test bot syntax and imports
       run: |
-        timeout 5 python main.py || if [ $? -eq 124 ]; then echo "Bot started successfully"; else exit 1; fi
+        python test_syntax.py
 
