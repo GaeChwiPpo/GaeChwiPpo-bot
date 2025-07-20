@@ -6,8 +6,8 @@ from pathlib import Path
 
 import boto3
 import discord
-from discord.ext import commands, tasks
 import discord.utils
+from discord.ext import commands, tasks
 
 
 class Study(commands.Cog):
