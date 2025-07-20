@@ -168,7 +168,7 @@ class Study(commands.Cog):
 
         embed.add_field(
             name="📝 답변 방법",
-            value="이 메시지에 **스레드**를 열어서 답변하거나, 답글로 답변해주세요!",
+            value="아래에 자동으로 생성되는 **스레드**에서 답변해주세요!",
             inline=False,
         )
 
@@ -217,12 +217,12 @@ class Study(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        """답변 감지 및 자동 피드백"""
+        """스레드에서의 답변 감지 및 자동 피드백"""
         # 봇 메시지 무시
         if message.author.bot:
             return
 
-        # 스레드에서의 메시지인 경우
+        # 스레드에서의 메시지만 처리
         if isinstance(message.channel, discord.Thread):
             # 스레드 ID로 활성 질문 찾기
             thread_id = message.channel.id
@@ -232,18 +232,6 @@ class Study(commands.Cog):
                     if not q_info.get("answered", False):
                         await self.process_answer(message, q_id, q_info)
                     return
-
-        # 답글인지 확인
-        if not message.reference:
-            return
-
-        # 참조 메시지가 활성 질문인지 확인
-        ref_id = message.reference.message_id
-        if ref_id not in self.active_questions:
-            return
-
-        # 일반 답글 처리
-        await self.process_answer(message, ref_id, self.active_questions[ref_id])
 
     async def process_answer(self, message, question_id, q_info):
         """답변 처리 및 피드백 생성"""
