@@ -79,10 +79,14 @@ python main.py
 - `!rps [가위/바위/보]` / `!가위바위보` - 가위바위보 게임
 
 ### Study Cog 명령어 (학습 시스템)
-- `!question [backend/frontend]` / `!문제` / `!q` - 개발 질문 받기
+- `!question [backend/frontend/general]` / `!문제` / `!q` - 개발 질문 받기
+  - backend: 데이터베이스, API, 아키텍처, 성능, DevOps, 보안
+  - frontend: React, 성능, 상태관리, CSS, TypeScript, 테스팅, 접근성
+  - general: 프로그래밍 일반, 소프트스킬, 커리어
 - `!mystats` / `!내점수` / `!stats` - 학습 통계 보기
 - 답변 방법: 자동으로 생성되는 스레드에서 답변
 - 스레드에서 답변하면 AI가 자동으로 피드백을 제공합니다!
+- 총 240개 이상의 다양한 질문이 준비되어 있습니다
 
 ## 폴더 구조
 
@@ -93,6 +97,8 @@ discode-automation/
 │   ├── general.py  # 일반 명령어
 │   ├── fun.py      # 재미있는 명령어
 │   └── study.py    # 학습 질문 시스템
+├── data/           # 데이터 파일
+│   └── questions.json # 질문 데이터베이스
 ├── keep_alive.py   # Replit 웹 서버
 ├── .env            # 환경 변수 (생성 필요)
 ├── .env.example    # 환경 변수 예시

@@ -2,6 +2,7 @@ import json
 import os
 import random
 from datetime import datetime
+from pathlib import Path
 
 import boto3
 import discord
@@ -23,63 +24,65 @@ class Study(commands.Cog):
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
         )
 
-        # 질문 데이터베이스
-        self.question_bank = {
+        # JSON 파일에서 질문 데이터베이스 로드
+        self.question_bank = self.load_questions()
+
+    def load_questions(self):
+        """JSON 파일에서 질문 데이터 로드"""
+        try:
+            # 현재 파일의 디렉토리 기준으로 경로 설정
+            current_dir = Path(__file__).parent.parent
+            json_path = current_dir / "data" / "questions.json"
+
+            with open(json_path, "r", encoding="utf-8") as f:
+                questions = json.load(f)
+
+            print(f"✅ {json_path}에서 질문 데이터를 로드했습니다.")
+
+            # 통계 출력
+            total = 0
+            for main_cat in questions.values():
+                for sub_cat in main_cat.values():
+                    total += len(sub_cat)
+            print(f"📊 총 {total}개의 질문이 로드되었습니다.")
+
+            return questions
+
+        except FileNotFoundError:
+            print(f"❌ 질문 파일을 찾을 수 없습니다: {json_path}")
+            return self.get_default_questions()
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON 파싱 오류: {e}")
+            return self.get_default_questions()
+        except Exception as e:
+            print(f"❌ 질문 로드 중 오류: {e}")
+            return self.get_default_questions()
+
+    def get_default_questions(self):
+        """기본 질문 데이터 (폴백용)"""
+        return {
             "backend": {
-                "database": [
-                    "데이터베이스 커넥션 풀이 왜 필요한가요? 실무에서 어떻게 설정하시나요?",
-                    "인덱스를 추가했는데 오히려 성능이 느려졌습니다. 가능한 원인은?",
-                    "트랜잭션 격리 레벨 중 READ COMMITTED와 REPEATABLE READ의 차이점은?",
-                    "데이터베이스 샤딩과 레플리케이션의 차이점을 설명해주세요.",
-                    "N+1 쿼리 문제란 무엇이고 어떻게 해결하나요?",
-                ],
-                "api": [
-                    "API 응답 시간이 5초 걸립니다. 어떤 순서로 체크하시겠습니까?",
-                    "REST API와 GraphQL의 장단점을 비교해주세요.",
-                    "API 버전 관리 전략에는 어떤 것들이 있나요?",
-                    "Rate Limiting은 왜 필요하고 어떻게 구현하나요?",
-                    "JWT vs Session 기반 인증의 차이점은?",
-                ],
-                "architecture": [
-                    "마이크로서비스 vs 모놀리식, 언제 무엇을 선택하나요?",
-                    "이벤트 드리븐 아키텍처의 장단점은?",
-                    "CQRS 패턴은 언제 사용하면 좋을까요?",
-                    "서킷 브레이커 패턴을 설명하고 언제 사용하나요?",
-                    "캐시 전략 중 Cache-Aside vs Write-Through의 차이는?",
-                ],
+                "database": ["데이터베이스 인덱스의 장단점은?"],
+                "api": ["REST API의 특징은?"],
+                "architecture": ["마이크로서비스의 장점은?"],
             },
             "frontend": {
-                "react": [
-                    "React 렌더링이 느립니다. 어떻게 최적화하나요?",
-                    "useState vs useReducer, 언제 무엇을 사용하나요?",
-                    "React.memo와 useMemo의 차이점은?",
-                    "Virtual DOM이 실제로 성능에 도움이 되나요?",
-                    "useEffect의 dependency array를 빈 배열로 두면 어떤 일이 생기나요?",
-                ],
-                "performance": [
-                    "번들 사이즈가 3MB입니다. 줄이는 방법은?",
-                    "첫 화면 로딩이 느립니다. 개선 방법은?",
-                    "이미지 최적화 방법들을 설명해주세요.",
-                    "Code Splitting은 어떻게 구현하나요?",
-                    "Web Vitals 중 LCP를 개선하는 방법은?",
-                ],
-                "state": [
-                    "Redux vs Zustand vs Jotai, 각각 언제 사용하나요?",
-                    "Props Drilling 문제를 해결하는 방법들은?",
-                    "상태 정규화(normalization)는 왜 필요한가요?",
-                    "Optimistic Update는 어떻게 구현하나요?",
-                    "전역 상태 vs 로컬 상태를 구분하는 기준은?",
-                ],
+                "react": ["React Hooks의 규칙은?"],
+                "performance": ["웹 성능 최적화 방법은?"],
+                "state": ["상태 관리가 필요한 이유는?"],
             },
         }
 
     def get_random_question(self, category=None):
         """랜덤 질문 선택"""
-        if category and category in ["backend", "frontend"]:
+        # 사용 가능한 카테고리 목록
+        available_categories = list(self.question_bank.keys())
+
+        if category and category in available_categories:
             main_category = self.question_bank[category]
         else:
             # 랜덤 카테고리 선택
-            category = random.choice(["backend", "frontend"])
+            category = random.choice(available_categories)
             main_category = self.question_bank[category]
 
         # 서브 카테고리 선택
@@ -147,23 +150,30 @@ class Study(commands.Cog):
     @commands.command(name="question", aliases=["문제", "q"])
     async def ask_question(self, ctx, category: str = None):
         """학습 질문 던지기"""
+        # 사용 가능한 카테고리 목록
+        available_categories = list(self.question_bank.keys())
+
         # 카테고리 검증
-        if category and category not in ["backend", "frontend", None]:
-            await ctx.send("❌ 카테고리는 'backend' 또는 'frontend'만 가능합니다.")
+        if category and category not in available_categories:
+            categories_str = ", ".join([f"'{cat}'" for cat in available_categories])
+            await ctx.send(f"❌ 카테고리는 {categories_str} 중에서 선택해주세요.")
             return
 
         # 질문 생성
         q_data = self.get_random_question(category)
 
+        # 카테고리별 색상 설정
+        color_map = {
+            "backend": discord.Color.orange(),
+            "frontend": discord.Color.blue(),
+            "general": discord.Color.green(),
+        }
+
         # 임베드 생성
         embed = discord.Embed(
             title=f"🔥 오늘의 {q_data['category'].upper()} 질문",
             description=f"**Q. {q_data['question']}**",
-            color=(
-                discord.Color.orange()
-                if q_data["category"] == "backend"
-                else discord.Color.blue()
-            ),
+            color=color_map.get(q_data["category"], discord.Color.purple()),
         )
 
         embed.add_field(
