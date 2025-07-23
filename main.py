@@ -105,10 +105,4 @@ async def main():
 if __name__ == "__main__":
     import asyncio
 
-    from keep_alive import keep_alive
-
-    # Replit에서 실행 중인 경우 웹 서버 시작
-    if os.getenv("REPL_ID"):
-        keep_alive()
-
     asyncio.run(main())
