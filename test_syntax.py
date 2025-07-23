@@ -24,10 +24,6 @@ def test_imports():
 
         print("✅ cogs.fun imports successfully")
 
-        # Test utils
-        import keep_alive
-
-        print("✅ keep_alive.py imports successfully")
 
         print("\n✅ All modules import successfully!")
         return True

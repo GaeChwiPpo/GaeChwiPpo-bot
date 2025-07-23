@@ -51,8 +51,7 @@ config.json
 data/*
 !data/questions.json
 
-# Replit specific (no longer needed)
-keep_alive.py
+# Deployment specific
 .replit
 replit.nix
 poetry.lock

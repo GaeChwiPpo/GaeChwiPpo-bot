@@ -2,24 +2,8 @@
 
 Python과 discord.py를 사용한 오픈소스 Discord 봇입니다.
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
 
 ## 🚀 빠른 시작
-
-### Render.com으로 배포 (추천 - 무료 24/7 운영)
-1. 이 리포지토리를 GitHub에 Fork 또는 Clone
-2. [Render.com](https://render.com) 계정 생성 및 GitHub 연동
-3. 새 Background Worker 생성
-4. 환경 변수 설정 (아래 참조)
-5. 배포 시작!
-
-### 필수 환경 변수
-- `DISCORD_BOT_TOKEN`: Discord 봇 토큰
-- `ALLOWED_CHANNEL_ID`: 봇이 작동할 채널 ID (선택사항)
-- `AWS_ACCESS_KEY_ID`: AWS 액세스 키 (AI 피드백용)
-- `AWS_SECRET_ACCESS_KEY`: AWS 시크릿 키 (AI 피드백용)
-
-자세한 배포 방법은 [DEPLOY_RENDER.md](DEPLOY_RENDER.md) 참조
 
 ## 설치 방법 (로컬)
 
@@ -113,7 +97,6 @@ discode-automation/
 │   └── study.py    # 학습 질문 시스템
 ├── data/           # 데이터 파일
 │   └── questions.json # 질문 데이터베이스
-├── render.yaml     # Render 배포 설정
 ├── .env            # 환경 변수 (생성 필요)
 ├── .env.example    # 환경 변수 예시
 └── requirements.txt # 필요한 패키지
