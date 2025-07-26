@@ -276,19 +276,19 @@ class Study(commands.Cog):
             thread_id = message.channel.id
             for q_id, q_info in self.active_questions.items():
                 if q_info.get("thread_id") == thread_id:
-                    # 스레드에서의 첫 답변만 처리
-                    if not q_info.get("answered", False):
-                        await self.process_answer(message, q_id, q_info)
+                    # 모든 답변에 대해 피드백 제공
+                    await self.process_answer(message, q_id, q_info)
                     return
 
     async def process_answer(self, message, question_id, q_info):
         """답변 처리 및 피드백 생성"""
-        # 이미 답변된 질문인지 확인
-        if q_info.get("answered", False):
-            return
-
-        # 답변 처리 중으로 표시
-        self.active_questions[question_id]["answered"] = True
+        # answered 플래그를 제거하여 여러 답변 허용
+        # 대신 첫 답변인지 확인하여 점수 부여
+        is_first_answer = not q_info.get("answered", False)
+        
+        if is_first_answer:
+            # 첫 답변일 때만 answered 플래그 설정
+            self.active_questions[question_id]["answered"] = True
 
         # 피드백 생성 중 메시지
         thinking_msg = await message.reply("🤔 답변을 분석하고 있습니다...")
@@ -313,8 +313,8 @@ class Study(commands.Cog):
             # 피드백 전송
             await thinking_msg.edit(content=None, embed=embed)
 
-            # 답변 완료된 질문 제거
-            del self.active_questions[question_id]
+            # 질문은 스레드가 살아있는 동안 계속 유지
+            # 24시간 후 스레드가 자동 보관되면 자연스럽게 종료됨
 
         except Exception as e:
             await thinking_msg.edit(
